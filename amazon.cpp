@@ -9,29 +9,27 @@
 #include "db_parser.h"
 #include "product_parser.h"
 #include "util.h"
+#include "mydatastore.h"
 
 using namespace std;
+
 struct ProdNameSorter {
     bool operator()(Product* p1, Product* p2) {
         return (p1->getName() < p2->getName());
     }
 };
+
 void displayProducts(vector<Product*>& hits);
 
 int main(int argc, char* argv[])
 {
-    if(argc < 2) {
+    if (argc < 2) {
         cerr << "Please specify a database file" << endl;
         return 1;
     }
 
-    /****************
-     * Declare your derived DataStore object here replacing
-     *  DataStore type to your derived type
-     ****************/
-    DataStore ds;
-
-
+    // Create a MyDataStore instance
+    MyDataStore ds;
 
     // Instantiate the individual section and product parsers we want
     ProductSectionParser* productSectionParser = new ProductSectionParser;
@@ -40,13 +38,13 @@ int main(int argc, char* argv[])
     productSectionParser->addProductParser(new ProductMovieParser);
     UserSectionParser* userSectionParser = new UserSectionParser;
 
-    // Instantiate the parser
+    // Instantiate the parser and add section parsers
     DBParser parser;
     parser.addSectionParser("products", productSectionParser);
     parser.addSectionParser("users", userSectionParser);
 
-    // Now parse the database to populate the DataStore
-    if( parser.parse(argv[1], ds) ) {
+    // Parse the database to populate the DataStore
+    if (parser.parse(argv[1], ds)) {
         cerr << "Error parsing!" << endl;
         return 1;
     }
@@ -63,52 +61,96 @@ int main(int argc, char* argv[])
 
     vector<Product*> hits;
     bool done = false;
-    while(!done) {
+    while (!done) {
         cout << "\nEnter command: " << endl;
         string line;
-        getline(cin,line);
+        getline(cin, line);
         stringstream ss(line);
         string cmd;
-        if((ss >> cmd)) {
-            if( cmd == "AND") {
+        if (ss >> cmd) {
+            if (cmd == "AND") {
                 string term;
                 vector<string> terms;
-                while(ss >> term) {
+                while (ss >> term) {
                     term = convToLower(term);
                     terms.push_back(term);
                 }
                 hits = ds.search(terms, 0);
                 displayProducts(hits);
             }
-            else if ( cmd == "OR" ) {
+            else if (cmd == "OR") {
                 string term;
                 vector<string> terms;
-                while(ss >> term) {
+                while (ss >> term) {
                     term = convToLower(term);
                     terms.push_back(term);
                 }
                 hits = ds.search(terms, 1);
                 displayProducts(hits);
             }
-            else if ( cmd == "QUIT") {
+            else if (cmd == "QUIT") {
                 string filename;
-                if(ss >> filename) {
+                if (ss >> filename) {
                     ofstream ofile(filename.c_str());
                     ds.dump(ofile);
                     ofile.close();
                 }
                 done = true;
             }
-	    /* Add support for other commands here */
-
-
-
-
+            else if (cmd == "ADD") {
+                std::string username;
+                int hitIndex;
+                if (!(ss >> username >> hitIndex)) {
+                    cout << "Invalid request" << endl;
+                    cout.flush();
+                } else {
+                    std::string lowerUsername = convToLower(username);
+                    if (!ds.userExists(lowerUsername)) {
+                        cout << "Invalid username" << endl;
+                        cout.flush();
+                    } else if (hitIndex < 1 || hitIndex > (int)hits.size()) {
+                        cout << "Invalid request" << endl;
+                        cout.flush();
+                    } else {
+                        ds.addToCart(lowerUsername, hits[hitIndex - 1]);
+                        cout << "Added to cart: " << hits[hitIndex - 1]->getName() << endl;
+                        cout.flush();
+                    }
+                }
+            }
+            else if (cmd == "VIEWCART") {
+                std::string username;
+                if (ss >> username) {
+                    if (ds.userExists(username)) {
+                        ds.viewCart(username);
+                    } else {
+                        cout << "Invalid username" << endl;
+                        cout.flush();
+                    }
+                } else {
+                    cout << "Invalid request" << endl;
+                    cout.flush();
+                }
+            }
+            else if (cmd == "BUYCART") {
+                std::string username;
+                if (ss >> username) {
+                    if (ds.userExists(username)) {
+                        ds.buyCart(username);
+                    } else {
+                        cout << "Invalid username" << endl;
+                        cout.flush();
+                    }
+                } else {
+                    cout << "Invalid request" << endl;
+                    cout.flush();
+                }
+            }
             else {
                 cout << "Unknown command" << endl;
+                cout.flush();
             }
         }
-
     }
     return 0;
 }
@@ -116,15 +158,14 @@ int main(int argc, char* argv[])
 void displayProducts(vector<Product*>& hits)
 {
     int resultNo = 1;
-    if (hits.begin() == hits.end()) {
-    	cout << "No results found!" << endl;
-    	return;
+    if (hits.empty()) {
+        cout << "No results found!" << endl;
+        return;
     }
-    std::sort(hits.begin(), hits.end(), ProdNameSorter());
-    for(vector<Product*>::iterator it = hits.begin(); it != hits.end(); ++it) {
-        cout << "Hit " << setw(3) << resultNo << endl;
-        cout << (*it)->displayString() << endl;
+    sort(hits.begin(), hits.end(), ProdNameSorter());
+    for (size_t i = 0; i < hits.size(); i++) {
+        cout << "Hit " << setw(3) << i + 1 << endl;
+        cout << hits[i]->displayString() << endl;
         cout << endl;
-        resultNo++;
     }
 }

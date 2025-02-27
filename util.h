@@ -13,20 +13,44 @@
 template <typename T>
 std::set<T> setIntersection(std::set<T>& s1, std::set<T>& s2)
 {
+  std::set<T> result;
+  typename std::set<T>::iterator it1 = s1.begin();
+  typename std::set<T>::iterator it2 = s2.begin();
 
-
-
-
-
+  while (it1 != s1.end() && it2 != s2.end())
+  {
+      if (*it1 < *it2)
+      {
+        ++it1;
+      }
+      else if (*it2 < *it1)
+      {
+        ++it2;
+      }
+      else
+      {
+        result.insert(*it1); // Common element
+        ++it1;
+        ++it2;
+      }
+  }
+  return result;
 }
+// template <typename T>
+// std::set<T> setUnion(std::set<T>& s1, std::set<T>& s2)
+// {
+//   std::set<T> result;
+    
+//   std::set_union(s1.begin(), s1.end(), s2.begin(), s2.end(), std::inserter(result, result.begin()));
+
+//   return result;
+// }
 template <typename T>
-std::set<T> setUnion(std::set<T>& s1, std::set<T>& s2)
+std::set<T> setUnion(const std::set<T>& s1, const std::set<T>& s2)
 {
-
-
-
-
-
+    std::set<T> result = s1;  // Copy all elements from s1
+    result.insert(s2.begin(), s2.end());  // Insert elements from s2 (duplicates auto-ignored)
+    return result;
 }
 
 /***********************************************/
